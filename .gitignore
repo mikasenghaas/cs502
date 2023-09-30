@@ -1,3 +1,7 @@
+# Data
+*.csv
+**/data
+
 # Mac
 .DS_Store
 
