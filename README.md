@@ -1,2 +1,3 @@
-# cs502
-EPFL Deep Learning in Biomedicine (CS-502), Fall 2023
+# CS-502
+
+Course materials for "Deep Learning in Biomedicine" (CS-502), Fall 2023
