@@ -1,6 +1,7 @@
 # Data
 *.csv
 **/data
+**/dataset
 
 # Mac
 .DS_Store
