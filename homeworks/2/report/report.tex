@@ -1,0 +1,147 @@
+\documentclass[10pt,conference,compsocconf]{IEEEtran}
+
+\usepackage{hyperref}
+\usepackage{graphicx}	% For figure environment
+
+
+\begin{document}
+\title{Deep Learning Approaches for Mutagenicity Prediction in Chemical Compounds}
+
+\author{
+  Jonas-Mika Senghaas, \textit{mika.senghaas@epfl.ch} \\
+  \textit{Deep Learning in Biomedicine (CS-502), EPFL, Switzerland}
+}
+
+\maketitle
+
+\begin{abstract}
+  Report for Homework 2 in CS502 - Deep Learning in Biomedicine.
+\end{abstract}
+
+\section{Introduction}
+
+Graph-structured data is ubiquitous the biomedical domain. Amongst many more,
+chemical compounds such as molecules or proteins can be represented as graphs,
+and serve as the basis for a wide-range of research questions and applications
+in cheminformatics. Having expressive models for tackling these problems is
+therefore of great importance. This project aims to explore the potential of
+deep learning methods in the biomedical domain by applying graph convolutional
+neural networks to the task of mutagenicity prediction in chemical compounds
+on the \texttt{MUTAG} dataset. The results show that graph convolutional
+neural are a powerful tool for graph classification tasks and that they can be
+used to predict the mutagenicity of chemical compounds with high accuracy
+
+
+\section{Data}
+
+The MUTAG dataset is a popular benchmark dataset for graph classification in the
+biomedical domain. It consists of a total of a 188 graphs, each representing a
+chemical compound. The dataset is labelled, with each graph labelled as either
+mutagenic (positive class) or non-mutagenic (negative class). Both nodes and
+edges are attributed with categorical features, where nodes can be one of seven 
+different atom types and edges can be one of four different bond types. Both
+node and edge features are one-hot encoded. In the following we will refer to a
+single graph $G$ with $N$ nodes through its node feature matrix $\mathbf{H}$
+with dimension $N \times D$, its adjacency matrix $\mathbf{A}$ with dimension
+$N \times N$, its edge features, organised in a edge feature matrix $\mathbf{E}$
+with dimension $N \times N \times P$ and its label $y \in \{0, 1\}$.
+
+\section{Methodology}
+
+The goal of this project is to accurately predict the mutagenicity of chemical
+compounds by learning both from from the graph's topology, its node - and later
+also edge - features. Architecturally, each model is a feed-forward graph neural
+network, that iteratively updates the node feature representation into a
+meaningful latent space. To perform the final graph prediction a global pooling
+operation is applied to the node features, which are then fed into a fully
+connected layer classification head with a non-linear sigmoid activation to
+interpret the final output as the probability of a graph being mutagenic. This
+project explored a total of four different graph convolutional layers and two
+different pooling operations.
+
+\subsection{Graph Convolution Layer}
+
+In the regular graph convolutional layer each node's representation is updated by
+averaging the representations of its neighbours, then applying a linear
+transformation and finally applying a non-linear activation function. Thus,
+updating the node representation $\mathbf{h}_v$ of node $v$ in the $l$-layer can
+be expressed as
+
+
+\begin{equation}
+  \mathbf{h}_v^{(l+1)} = \sigma\left( \mathbf{W}_l \sum_{u\in N(v)}
+  \frac{\mathbf{h}_u^{(l)}}{|N(v)|} + \mathbf{B}_l \mathbf{h}_v^{(l)} \right),
+\end{equation}
+
+where $\mathbf{W}_l$ and $\mathbf{B}_l$ are both learnable weight matrices and 
+$\sigma$ is a non-linear activation function.
+
+\subsection{GraphSAGE}
+ 
+Graph convolutional layers can be seen as a special case of the more general
+GraphSAGE layer. Here, the node representation is updated by aggregating the
+neighbours' representations using a modular aggregator function $\mathrm{AGG}$.
+The node representation is then updated by applying a linear transformation to
+the concatenation of the node's current representation and the aggregated
+neighbour information and finally applying a non-linear activation function.
+Again, we can express the update of the node representation $\mathbf{h}_v$ of
+node $v$ in the $l$-layer as
+
+\begin{equation}
+  \mathbf{h}_v^{(l+1)} = \sigma\left( \mathbf{W}_l \cdot
+  \left[\mathbf{h}_v^{(l)} || \mathrm{AGG} \left(\left\{\mathbf{h}_u^{(l)}, \forall u\in N(v) \right\}\right) \right] \right),
+\end{equation}
+
+following the same notation as in the previous section.
+
+\subsection{Graph Attention Layer}
+
+Graph attention layers~\cite{graphatt} utilise the attention mechanism that is prevalent in the
+natural language processing domain~\cite{attention}. Here, a node's neighbours 
+are aggregated by computing a weighted sum of their representations, where the
+weights are computed by a learnable attention mechanism. The mechanism allows
+for each node to learn a different weighting of its neighbours' representations.
+
+\begin{equation}
+  \mathbf{h}_v^{(l+1)} = \sigma\left( \sum_{u\in N(v) \cup \{v\}}
+  \alpha_{vu}^{(l)} \mathbf{W}_l\mathbf{h}_v^{(l)} \right),
+\end{equation}
+
+\subsection{Edge Convolution Layer}
+
+Finally, edge convolution layers update the node representations utilising the
+edge features. In this implementation, which is adapted from~\cite{edgeconv},
+each dimension of the edge feature matrix $\mathbf{E}_{\cdot\cdot p} \forall
+p \in P$ is treated as its own edge feature. W 
+
+\begin{equation}
+  H^{(l+1)} = 
+  \sigma\left(\prod_{p=1}^P \tilde{E}_{\cdot\cdot p} H^{(l)} W_l \right),
+\end{equation}
+
+where $\tilde{E}_{\cdot\cdot p}$ is the $p$-channel of the edge feature 
+matrix $\mathbf{E}$.
+
+\section{Experiments}
+
+Given the individual building blocks for graph convolutional and global pooling 
+layers, we can now construct a variety of different models. All models tested
+follow the same custom graph neural network architecture, which is parametrised
+with the type of convolutional layer (including the type of non-linear
+activation function), the global pooling operation and the hidden
+dimensions in each of the convolutional layers. Table XY shows the different
+model configurations that were tested.
+
+
+
+All experiments were conducted using \texttt{PyTorch}~\cite{torch}. 
+
+\section{Findings}
+
+\section{Summary}
+
+
+\bibliographystyle{IEEEtran}
+\bibliography{literature}
+
+\end{document}
