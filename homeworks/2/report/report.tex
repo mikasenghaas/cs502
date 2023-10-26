@@ -2,7 +2,8 @@
 
 \usepackage{hyperref}
 \usepackage{graphicx}	% For figure environment
-
+\usepackage{booktabs}
+\usepackage{multirow}
 
 \begin{document}
 \title{Deep Learning Approaches for Mutagenicity Prediction in Chemical Compounds}
@@ -15,92 +16,126 @@
 \maketitle
 
 \begin{abstract}
-  Report for Homework 2 in CS502 - Deep Learning in Biomedicine.
+
+Graph-structured data is prevalent in the biomedical domain, particularly in
+cheminformatics where chemical compounds are represented as graphs. This project
+investigates the use of graph convolutional networks to predict mutagenicity in
+chemical compounds using the MUTAG dataset. We evaluate various graph
+convolutional layers and pooling operations for graph classification and find
+that they provide a highly accurate tool for predicting chemical compound
+mutagenicity.
+
 \end{abstract}
+
 
 \section{Introduction}
 
-Graph-structured data is ubiquitous the biomedical domain. Amongst many more,
-chemical compounds such as molecules or proteins can be represented as graphs,
-and serve as the basis for a wide-range of research questions and applications
-in cheminformatics. Having expressive models for tackling these problems is
-therefore of great importance. This project aims to explore the potential of
-deep learning methods in the biomedical domain by applying graph convolutional
-neural networks to the task of mutagenicity prediction in chemical compounds
-on the \texttt{MUTAG} dataset. The results show that graph convolutional
-neural are a powerful tool for graph classification tasks and that they can be
-used to predict the mutagenicity of chemical compounds with high accuracy
+This project implements and rigorously evaluates a variety of graph
+convolutional neural networks for the task of graph classification on the
+\texttt{MUTAG} dataset. 
 
+All experiments are fully reproducible and accessible on
+\href{https://github.com/mikasenghaas/cs502}{GitHub}.
 
 \section{Data}
 
 The MUTAG dataset is a popular benchmark dataset for graph classification in the
 biomedical domain. It consists of a total of a 188 graphs, each representing a
-chemical compound. The dataset is labelled, with each graph labelled as either
-mutagenic (positive class) or non-mutagenic (negative class). Both nodes and
-edges are attributed with categorical features, where nodes can be one of seven 
-different atom types and edges can be one of four different bond types. Both
-node and edge features are one-hot encoded. In the following we will refer to a
-single graph $G$ with $N$ nodes through its node feature matrix $\mathbf{H}$
-with dimension $N \times D$, its adjacency matrix $\mathbf{A}$ with dimension
-$N \times N$, its edge features, organised in a edge feature matrix $\mathbf{E}$
-with dimension $N \times N \times P$ and its label $y \in \{0, 1\}$.
+chemical compound. The dataset is labelled, with each graph being either
+mutagenic (positive class) or non-mutagenic (negative class). Additionally, both
+nodes and edges are labelled: Nodes can be one of seven atom types and edges can
+be one of four bond types. Table~\ref{tab:dataset} displays some basic graph
+statistics of the entire dataset, and within the two subgroups of positive and
+negative examples, respectively. The dataset consists of more positive examples
+($66\%$) than negative examples ($34\%$). Further, all graphs are
+fully-connected and small with an average of $\approx 18$ nodes, $\approx 20$
+edges and an average degree of 2.19. The mutagenic graphs tend to be slightly
+larger with a higher average node and edge count. 
+
+\begin{table}[ht]
+  \centering
+  \begin{tabular}{lccc}
+    \toprule
+    & \textbf{Overall} & \textbf{Positive} (1)& \textbf{Negative} (0) \\
+    \midrule
+    \#Graphs & 188 & 125 (66\%) & 63 (34\%) \\
+    Avg. \#Nodes & 17.93 & 19.94 & 13.94 \\
+    Avg. \#Edges & 19.79 & 22.40 & 14.62 \\
+    Avg. Degree & 2.19 & 2.24 & 2.09 \\
+    Avg. Connectivity & 1.0 & 1.0 & 1.0 \\
+    \bottomrule
+  \end{tabular}
+  \caption{Dataset Statistics}
+  \label{tab:dataset}
+\end{table}
+
+In the following, a graph with $N$ nodes will be denoted as $G = (\mathbf{H},
+\mathbf{A}, \mathbf{E}, y)$, where $\mathbf{H}$ is the node feature matrix,
+$\mathbf{A}$ is the adjacency matrix, $\mathbf{E}$ is the edge feature matrix
+and $y \in \{0, 1\}$, denoting the absence or presence of mutagenicity,
+respectively.
 
 \section{Methodology}
 
-The goal of this project is to accurately predict the mutagenicity of chemical
-compounds by learning both from from the graph's topology, its node - and later
-also edge - features. Architecturally, each model is a feed-forward graph neural
-network, that iteratively updates the node feature representation into a
-meaningful latent space. To perform the final graph prediction a global pooling
-operation is applied to the node features, which are then fed into a fully
-connected layer classification head with a non-linear sigmoid activation to
-interpret the final output as the probability of a graph being mutagenic. This
-project explored a total of four different graph convolutional layers and two
-different pooling operations.
+The objective is to accurately predict the mutagenicity of chemical compounds by
+learning both from the graph's topology and its node and edge features. This
+study investigates the potential of graph convolutional networks for this task.
+Architecturally, all models are feed-forward graph neural network, that
+iteratively update a graph's node feature representation into a meaningful
+latent space. To perform the final graph prediction a global pooling operation
+is applied to the node features, which are then fed into a classification head
+with a non-linear sigmoid activation to interpret the final output as the
+probability of a graph being mutagenic. This project explored a total of four
+different graph convolutional layers and two different pooling operations, which
+are introduced in the following.
+
+% TODO: could add a figure here to illustrate the architecture
 
 \subsection{Graph Convolution Layer}
 
-In the regular graph convolutional layer each node's representation is updated by
+In the regular \texttt{GraphConv} layer each node's representation is updated by
 averaging the representations of its neighbours, then applying a linear
 transformation and finally applying a non-linear activation function. Thus,
 updating the node representation $\mathbf{h}_v$ of node $v$ in the $l$-layer can
 be expressed as
-
 
 \begin{equation}
   \mathbf{h}_v^{(l+1)} = \sigma\left( \mathbf{W}_l \sum_{u\in N(v)}
   \frac{\mathbf{h}_u^{(l)}}{|N(v)|} + \mathbf{B}_l \mathbf{h}_v^{(l)} \right),
 \end{equation}
 
-where $\mathbf{W}_l$ and $\mathbf{B}_l$ are both learnable weight matrices and 
-$\sigma$ is a non-linear activation function.
+where $\mathbf{W}_l$ and $\mathbf{B}_l$ are both learnable weight matrices,
+$N(v)$ represents the neighbourhood set of node $v$ and $\sigma$ is a non-linear
+activation function.
 
 \subsection{GraphSAGE}
  
-Graph convolutional layers can be seen as a special case of the more general
-GraphSAGE layer. Here, the node representation is updated by aggregating the
-neighbours' representations using a modular aggregator function $\mathrm{AGG}$.
-The node representation is then updated by applying a linear transformation to
-the concatenation of the node's current representation and the aggregated
-neighbour information and finally applying a non-linear activation function.
-Again, we can express the update of the node representation $\mathbf{h}_v$ of
-node $v$ in the $l$-layer as
+The \texttt{GraphSAGE} layer is a generalization of the \texttt{GraphConv}
+layer. Here, a node's representation is updated by aggregating the neighbours'
+representations using a modular aggregator function $\mathrm{AGG}$. The node
+representation is then updated by applying a linear transformation to the
+concatenation of the node's current representation and the aggregated neighbour
+information and finally applying a non-linear activation function. Again, we can
+express the update of the node representation $\mathbf{h}_v$ of node $v$ in the
+$l$-layer as
 
 \begin{equation}
   \mathbf{h}_v^{(l+1)} = \sigma\left( \mathbf{W}_l \cdot
   \left[\mathbf{h}_v^{(l)} || \mathrm{AGG} \left(\left\{\mathbf{h}_u^{(l)}, \forall u\in N(v) \right\}\right) \right] \right),
 \end{equation}
 
-following the same notation as in the previous section.
+following the same notation as in the previous section. Within this project, we
+utilise a simple sum aggregator, which simply sums the neighbours'
+representations.
 
 \subsection{Graph Attention Layer}
 
-Graph attention layers~\cite{graphatt} utilise the attention mechanism that is prevalent in the
-natural language processing domain~\cite{attention}. Here, a node's neighbours 
-are aggregated by computing a weighted sum of their representations, where the
-weights are computed by a learnable attention mechanism. The mechanism allows
-for each node to learn a different weighting of its neighbours' representations.
+The \texttt{GraphAttention} layer~\cite{graphatt} utilise the attention
+mechanism that is prevalent in the natural language processing
+domain~\cite{attention}. Here, a node's neighbours are aggregated by computing a
+weighted sum of their representations, where the weights are computed by a
+learnable attention mechanism. The mechanism allows for each node to learn a
+different weighting of its neighbours' representations.
 
 \begin{equation}
   \mathbf{h}_v^{(l+1)} = \sigma\left( \sum_{u\in N(v) \cup \{v\}}
@@ -109,39 +144,185 @@ for each node to learn a different weighting of its neighbours' representations.
 
 \subsection{Edge Convolution Layer}
 
-Finally, edge convolution layers update the node representations utilising the
-edge features. In this implementation, which is adapted from~\cite{edgeconv},
-each dimension of the edge feature matrix $\mathbf{E}_{\cdot\cdot p} \forall
-p \in P$ is treated as its own edge feature. W 
+Lastly, a custom edge convolution layer was implemented. The layer is inspired
+by the work of Gong et al.~\cite{edgeconv}. The core idea is to treat the edge
+feature matrix $\mathbf{E}$ as a collection of $P$ edge feature matrices
+$\mathbf{E}_{\cdot\cdot p} \forall p \in P$. While Gong et.~al propose to
+normalise edge feature matrices and multiply the resulting $P$ node
+representations element-wise, this project does not employ the normalisation
+step, because the edge features are already on the same scale due to the one-hot
+encoding. Further, to prevent the node representation from going to zero, the
+feature maps for each of the edge feature matrices are summed, instead of
+multiplied. Lastly, a bias matrix is added, similar to the \texttt{GraphConv}
+layer to allow for self-loops. Thus, the update of all nodes in the
+\texttt{EdgeConv} layer can express the update of all nodes in matrix notation
+as
 
 \begin{equation}
-  H^{(l+1)} = 
-  \sigma\left(\prod_{p=1}^P \tilde{E}_{\cdot\cdot p} H^{(l)} W_l \right),
+  \mathbf{H}^{(l+1)} = 
+  \sigma\left(
+    \sum_{p=1}^P \tilde{\mathbf{E}}_{\cdot\cdot p} \mathbf{H}^{(l)} \mathbf{W}_l 
+    +\mathbf{H}^{(l)} \mathbf{B}_l \right)
 \end{equation}
 
-where $\tilde{E}_{\cdot\cdot p}$ is the $p$-channel of the edge feature 
-matrix $\mathbf{E}$.
+\subsection{Pooling}
+
+Finally, to obtain a fixed-sized representation of the graph, a global pooling
+operation is applied to the latent node representations after the graph
+convolutional layers. This study considers the standard mean and max pooling
+operations over the node representations.
 
 \section{Experiments}
 
-Given the individual building blocks for graph convolutional and global pooling 
-layers, we can now construct a variety of different models. All models tested
-follow the same custom graph neural network architecture, which is parametrised
-with the type of convolutional layer (including the type of non-linear
-activation function), the global pooling operation and the hidden
-dimensions in each of the convolutional layers. Table XY shows the different
-model configurations that were tested.
+All combinations of the four graph convolutional layer types
+(\{\texttt{GraphConv}, \texttt{GraphSAGE}, \texttt{GraphAttention},
+\texttt{EdgeConv}\}) and two global pooling (\{Mean, Max\}) were tested with two
+different model architectures. For each combination of layer type and pooling
+operation, a small model with three hidden layers of dimension $[5, 5, 5]$ and a
+large model with three hidden layers of dimension $[128, 64, 32]$ were tested,
+denoted as $S$ and $L$, respectively.
 
+All $16$ models were trained using \texttt{PyTorch}~\cite{torch} with fixed
+training hyper-parameters to allow for a fair comparison. Each model was
+optimised under binary cross-entropy objective using the Adam
+optimiser~\cite{adam} with a fixed learning rate of $\gamma = 0.01$ and default
+momentum parameters $\beta_1 = 0.9$ and $\beta_2 = 0.999$. The models were
+trained for a fixed number of $\eta=100$ epochs using stochastic gradient
+descent with a batch size of $1$. A split of $75\%$ is used for training, $15\%$
+for validation and $10\%$ for testing. Model selection is performed based on the
+validation Macro F1 score and the best model is evaluated on the test set.
 
+\section{Results}
 
-All experiments were conducted using \texttt{PyTorch}~\cite{torch}. 
+Table~\ref{tab:results} displays the validation performance of the five best
+models. The best model is a small architecture using \texttt{GraphSAGE} with sum
+aggregation and mean pooling and achieves a validation accuracy of $89\%$ and a
+Macro F1 score of $89\%$. Generally, the \texttt{GraphSAGE} convolutional layer
+performs better than the other convolutional layers, and interestingly
+outperforms both attention-based and edge convolutional layers. In fact, the
+attention layer performs worse overall. The inclusion of the edge features did
+not improve the performance, but also did not degrade it significantly.
 
-\section{Findings}
+\begin{table}[ht]
+  \centering
+  \begin{tabular}{lccccc}
+    \toprule
+    & 
+    \multicolumn{3}{c}{\textbf{Parameters}} &
+    \multicolumn{2}{c}{\textbf{Evaluation}} \\
+    & H.-Dim. & Conv. L. & Pool. L. & Acc. (\%) & M.-F1 (\%) \\
+    \midrule
+    1 & S & \texttt{GraphSAGE} & Mean & \textbf{88.93} & \textbf{89.29} \\
+    2 & L & \texttt{GraphSAGE} & Max & 80.09 & 82.14 \\
+    3 & S & \texttt{EdgeConv} & Mean & 80.09 & 82.14 \\
+    4 & L & \texttt{EdgeConv} & Max & 80.09 & 82.14 \\
+    5 & L & \texttt{GraphConv} & Max & 76.67 & 78.57 \\
+    \bottomrule
+  \end{tabular}
+  \caption{Validation Performance of Top 5 Models}
+  \label{tab:results}
+\end{table}
+
+Re-training the best model configuration on the full dataset and evaluating it
+on the test set yields an accuracy of $\mathbf{89\%}$ and a Macro F1 score of
+$\mathbf{88\%}$, which is in line with the validation performance. The confusion
+matrix in the Appendix (Figure~\ref{fig:confusion_matrix}) proves the model's
+generalisation ability, as it is able to predict unseen samples from both
+classes reliably.
+
 
 \section{Summary}
 
+The experiments show that graph convolutional networks learn powerful
+representations of chemical compounds that allow for accurate prediction of
+mutagenicity. Given the small data size, a relatively small model architecture
+with only three GraphSAGE convolutional layers and sum aggregation obtained the
+best overall validation performance. Evaluating the classifier on the test split
+verified that the model is not overfitting and is able to predict both classes
+with equal accuracy. The inclusion of edge features in the edge convolutional
+layer did not significantly improve the performance.
 
+\newpage
 \bibliographystyle{IEEEtran}
 \bibliography{literature}
+
+\section{Appendix}
+
+\subsection{Positive and Negative Example}
+
+Figure~\ref{fig:pos_vs_neg_example} displays two examples of chemical compounds.
+In addition to the graph topology, the plot shows the integer-encoded node and
+edge types and denotes the graph's mutagenicity with the node colour.
+
+\begin{figure}[h!]
+  \includegraphics[width=0.5\textwidth]{../plots/pos_vs_neg.png}
+  \caption{Mutagenic vs. Non-Mutagenic Graph}
+  \label{fig:pos_vs_neg_example}
+\end{figure}
+
+\subsection{Training Curves}
+
+% TODO: figure with training curves for all models
+Figure~\ref{fig:training_curve} displays the training curve of the best model
+configuration. The plot shows the training and validation loss and accuracy over
+the $\eta = 100$ training curves.
+
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=0.5\textwidth]{../plots/training_curve_cbfdc3d3038f4981be578860b944cfd6.png}
+  \caption{Example Training Curve}
+  \label{fig:training_curve}
+\end{figure}
+
+\subsection{Experiment Results}
+
+Table~\ref{tab:results_all} displays the validation performance of all model
+configurations.
+
+\begin{table}[h]
+  \centering
+  \begin{tabular}{lccccc}
+    \toprule
+    & 
+    \multicolumn{3}{c}{\textbf{Parameters}} &
+    \multicolumn{2}{c}{\textbf{Evaluation}} \\
+    & H.-Dim. & Conv. L. & Pool. L. & Acc. (\%) & M.-F1 (\%) \\
+    \midrule
+    0 & S & GraphSAGE & Mean & 88.93 & 89.29 \\
+    1 & L & GraphSAGE & Max & 80.09 & 82.14 \\
+    2 & S & EdgeConv & Mean & 80.09 & 82.14 \\
+    3 & L & EdgeConv & Max & 80.09 & 82.14 \\
+    4 & L & GraphConv & Max & 76.67 & 78.57 \\
+    5 & S & GraphSAGE & Max & 74.97 & 75.00 \\
+    6 & L & GraphSAGE & Mean & 73.75 & 78.57 \\
+    7 & L & GraphAttention & Mean & 73.33 & 75.00 \\
+    8 & L & EdgeConv & Mean & 72.12 & 75.00 \\
+    9 & S & EdgeConv & Max & 70.05 & 71.43 \\
+    10 & S & GraphConv & Mean & 67.48 & 67.86 \\
+    11 & S & GraphConv & Max & 67.48 & 67.86 \\
+    12 & L & GraphAttention & Max & 63.54 & 64.29 \\
+    13 & S & GraphAttention & Max & 62.57 & 64.29 \\
+    14 & L & GraphConv & Mean & 61.99 & 67.86 \\
+    15 & S & GraphAttention & Mean & 60.26 & 60.71 \\
+      \bottomrule
+  \end{tabular}
+  \caption{Validation Performance of All Models}
+  \label{tab:results_all}
+\end{table}
+
+
+
+\subsection{Test Confusion Matrix}
+
+Figure~\ref{fig:confusion_matrix} displays the confusion matrix of the best
+model's predictions on the test set. The model achieves an accuracy of $89\%$ and
+a Macro F1 score of $89\%$.
+
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=0.4\textwidth]{../plots/confusion_matrix.png}
+  \caption{Confusion Matrix}
+  \label{fig:confusion_matrix}
+\end{figure}
 
 \end{document}
