@@ -2,6 +2,7 @@
 *.csv
 **/data
 **/dataset
+**/plots
 
 # Mac
 .DS_Store
