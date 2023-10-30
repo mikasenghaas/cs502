@@ -12,6 +12,7 @@ from torch.utils.data import Dataset
 # Utils
 #######
 
+
 def load_json(filname):
     """Load the data from a json file."""
     with open(filname) as f:
@@ -37,14 +38,14 @@ def split_sequences(sequences, train_ratio, valid_ratio, subsample=None, seed=42
     indices = np.arange(len(sequences))
     np.random.shuffle(indices)
 
-    # Sub-sample the data
+    # Sub-sample the data
     if subsample is not None:
         indices = indices[:subsample]
 
     # Data splitting into train, validation and test sets
     train_size = int(len(indices) * train_ratio)
     valid_size = int(len(indices) * valid_ratio)
-    train_indices = indices[: train_size]
+    train_indices = indices[:train_size]
     valid_indices = indices[train_size : train_size + valid_size]
     test_indices = indices[train_size + valid_size :]
     train_sequences = [sequences[i] for i in train_indices]
@@ -57,13 +58,15 @@ def split_sequences(sequences, train_ratio, valid_ratio, subsample=None, seed=42
 # Dataset
 #########
 
+
 class ProteinDataset(Dataset):
     def __init__(self, sequences, token2idx):
         self.token2idx = token2idx
         # Prepare the data by adding the special tokens <bos> and <eos>
         self.data, self.data_id = [], []
         for seq in sequences:
-            self.data.append(...)  # TODO: list of individual tokens
+            tokens = ["<bos>"] + [token for token in seq] + ["<eos>"]
+            self.data.append(tokens)
             self.data_id.append([token2idx[token] for token in self.data[-1]])
 
     def __len__(self):
@@ -73,16 +76,18 @@ class ProteinDataset(Dataset):
     def __getitem__(self, index):
         """
         Return the input and target token indices.
-        
+
         Args:
             index (int): index of the sequence in the dataset.
         Returns:
             input_ids (list): list of input token indices.
             target_ids (list): list of target token indices.
         """
-        ...  # TODO
+        input_ids = self.data_id[index][:-1]
+        target_ids = self.data_id[index][1:]
+
         return input_ids, target_ids
-    
+
     def padding_batch(self, batch):
         """
         Pad the batch to the longest sequence.
@@ -98,13 +103,14 @@ class ProteinDataset(Dataset):
         target_ids = [d[1] for d in batch]
 
         # Get the max length in the batch
-        max_len = ...  # TODO
+        max_len = max([len(i) for i in input_ids])
 
         # Pad the sequences
         # Hint: use self.token2idx['<pad>'] to get the padding token index
         for i in range(len(input_ids)):
-            ...  # TODO
-        
+            input_ids[i] += [self.token2idx["<pad>"]] * (max_len - len(input_ids[i]))
+            target_ids[i] += [self.token2idx["<pad>"]] * (max_len - len(target_ids[i]))
+
         # Transform into tensors (useful for PyTorch DataLoaders)
         input_ids = torch.LongTensor(input_ids)
         target_ids = torch.LongTensor(target_ids)
